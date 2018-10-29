@@ -139,7 +139,7 @@
         },
         {
             "type": "Microsoft.Resources/deployments",
-            "apiVersion": "2017-05-10",
+            "apiVersion": "2015-01-01",
             "name": "jiraTemplate",
             "dependsOn": [
                 "vpcTemplate"

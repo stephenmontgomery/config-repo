@@ -124,7 +124,7 @@
             "properties": {
                 "mode": "Incremental",
                 "templateLink": {
-                    "uri": "[concat(variables('vpcTemplate').templateUrl, parameters('provisioningStorageToken'))]",
+                    "uri": "[variables('vpcTemplate').templateUrl]",
                     "contentVersion": "1.0.0.0"
                 },
                 "parameters": {
@@ -147,7 +147,7 @@
             "properties": {
                 "mode": "Incremental",
                 "templateLink": {
-                    "uri": "[concat(variables('jiraTemplate').templateUrl, parameters('provisioningStorageToken'))]",
+                    "uri": "[variables('jiraTemplate').templateUrl]",
                     "contentVersion": "1.0.0.0"
                 },
                 "parameters": {

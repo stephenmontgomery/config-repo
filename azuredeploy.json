@@ -114,10 +114,10 @@
     },
     "variables": {
         "vpcTemplate": {
-            "templateUrl": "[concat(parameters('baseUrl'),'azuredeploy-vpc.json', parameters('provisioningStorageToken'))]"
+            "templateUrl": "[concat(parameters('baseUrl'),'azuredeploy-vpc.json')]"
         },
         "jiraTemplate": {
-            "templateUrl": "[concat(parameters('baseUrl'),'azuredeploy-jira.json', parameters('provisioningStorageToken'))]"
+            "templateUrl": "[concat(parameters('baseUrl'),'azuredeploy-jira.json')]"
         }
     },
     "resources": [
@@ -128,7 +128,7 @@
             "properties": {
                 "mode": "Incremental",
                 "templateLink": {
-                    "uri": "[variables('vpcTemplate').templateUrl]",
+                    "uri": "[concat(variables('vpcTemplate').templateUrl, parameters('provisioningStorageToken'))]",
                     "contentVersion": "1.0.0.0"
                 },
                 "parameters": {
@@ -151,7 +151,7 @@
             "properties": {
                 "mode": "Incremental",
                 "templateLink": {
-                    "uri": "[variables('jiraTemplate').templateUrl]",
+                    "uri": "[concat(variables('jiraTemplate').templateUrl, parameters('provisioningStorageToken'))]",
                     "contentVersion": "1.0.0.0"
                 },
                 "parameters": {

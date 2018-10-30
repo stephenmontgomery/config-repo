@@ -79,7 +79,8 @@
         },
         "userName": {
             "type": "string",
-            "defaultValue": "admin"
+            "defaultValue": "admin",
+            "minLength": 5
         },
         "userCredential": {
             "type": "securestring",
@@ -109,7 +110,8 @@
             "defaultValue": 2,
             "metadata": {
                 "description": "The number of JIRA nodes in the cluster"
-            }
+            },
+            "minValue": 2
         }
     },
     "variables": {

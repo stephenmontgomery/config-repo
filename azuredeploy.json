@@ -15,7 +15,7 @@
             }
         },
         "provisioningStorageToken": {
-            "type": "securestring",
+            "type": "string",
             "defaultValue": "?sv=2017-04-17&si=public-access&sr=c&sig=P15kxinQOKEJruc4gxMmmKL3EpPZMg137i96w%2BKGB8E%3D",
             "metadata": {
                 "description": "Scripts storage access token"

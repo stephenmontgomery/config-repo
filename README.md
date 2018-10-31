@@ -1,7 +1,7 @@
 # Jira Deploy
 
 Simple Web Deploy in a publicly-accessible location:
-[![Deploy to Azure](https://azuredeploy.net/deploybutton.png)](https://deploy.azure.com/)
+[![Deploy to Azure](https://azuredeploy.net/deploybutton.png)](https://azuredeploy.net/)
 
 
 Simple Web Deploy in a publicly-accessible location with a template override:

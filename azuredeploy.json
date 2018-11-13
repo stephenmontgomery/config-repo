@@ -35,11 +35,11 @@
                 "description": "The size of the virtual machine used for each JIRA node."
             }
         },
-        "natVmSize": {
+        "jumpboxVmSize": {
             "type": "string",
-            "defaultValue": "Standard_DS2_v2",
+            "defaultValue": "Standard_B1s",
             "metadata": {
-                "description": "The size of the virtual machine used for the NAT box."
+                "description": "The size of the virtual machine used for the jumpbox box."
             }
         },
         "jumpboxSshKey": {
@@ -112,6 +112,14 @@
                 "description": "The number of JIRA nodes in the cluster"
             },
             "minValue": 2
+        },
+        "sslBase64EncodedPfxCertificate": {
+            "type": "string",
+            "defaultValue": ""
+        },
+        "sslPfxCertificatePassword": {
+            "type": "string",
+            "defaultValue": ""
         }
     },
     "variables": {
@@ -120,6 +128,9 @@
         },
         "jiraTemplate": {
             "templateUrl": "[concat(parameters('baseUrl'),'azuredeploy-jira.json')]"
+        },
+        "domainTemplate": {
+            "templateUrl": "[concat(parameters('baseUrl'),'azuredeploy-domain.json')]"
         }
     },
     "resources": [
@@ -137,8 +148,8 @@
                     "location": {
                         "value": "[parameters('location')]"
                     },
-                    "natVmSize": {
-                        "value": "[parameters('natVmSize')]"
+                    "jumpboxVmSize": {
+                        "value": "[parameters('jumpboxVmSize')]"
                     },
                     "jumpboxSshKey": {
                         "value": "[parameters('jumpboxSshKey')]"
@@ -191,7 +202,7 @@
                         "value": "[parameters('nodeSshPassword')]"
                     },
                     "cname": {
-                        "value": "[parameters('cname')]"
+                        "value": "[if(greater(length(parameters('cname')), 0), concat('jira.', parameters('cname')), parameters('cname'))]"
                     },
                     "userName": {
                         "value": "[parameters('userName')]"
@@ -211,26 +222,60 @@
                     "appSubnetName": {
                         "value": "[reference('vpcTemplate').outputs.appSubnetName.value]"
                     },
-                    "natName": {
-                        "value": "[reference('vpcTemplate').outputs.natName.value]"
+                    "gtwySubnetName": {
+                        "value": "[reference('vpcTemplate').outputs.gtwySubnetName.value]"
                     },
-                    "natDns": {
-                        "value": "[reference('vpcTemplate').outputs.natDns.value]"
+                    "jumpboxName": {
+                        "value": "[reference('vpcTemplate').outputs.jumpboxName.value]"
                     },
-                    "natPublicEndpoint": {
-                        "value": "[reference('vpcTemplate').outputs.natPublicEndpoint.value]"
+                    "jumpboxPublicIpAddress": {
+                        "value": "[reference('vpcTemplate').outputs.jumpboxPublicIpAddress.value]"
                     },
-                    "natPublicIpAddress": {
-                        "value": "[reference('vpcTemplate').outputs.natPublicIpAddress.value]"
+                    "sslBase64EncodedPfxCertificate": {
+                        "value": "[parameters('sslBase64EncodedPfxCertificate')]"
+                    },
+                    "sslPfxCertificatePassword": {
+                        "value": "[parameters('sslPfxCertificatePassword')]"
+                    }
+                }
+            }
+        },
+        {
+            "type": "Microsoft.Resources/deployments",
+            "apiVersion": "2015-01-01",
+            "name": "domainTemplate",
+            "dependsOn": [
+                "jiraTemplate"
+            ],
+            "condition": "[greater(length(parameters('cname')), 0)]",
+            "properties": {
+                "mode": "Incremental",
+                "templateLink": {
+                    "uri": "[concat(variables('domainTemplate').templateUrl, parameters('provisioningStorageToken'))]",
+                    "contentVersion": "1.0.0.0"
+                },
+                "parameters": {
+                    "cname": {
+                        "value": "[parameters('cname')]"
+                    },
+                    "gtwyIpName": {
+                        "value": "[reference('jiraTemplate').outputs.gtwyIpName.value]"
+                    },
+                    "prefix": {
+                        "value": "jira"
                     }
                 }
             }
         }
     ],
     "outputs": {
-        "jiraUrl": {
+        "appEndpoint": {
             "type": "string",
-            "value": "[reference('vpcTemplate').outputs.natPublicEndpoint.value]"
+            "value": "[if(not(empty(parameters('sslBase64EncodedPfxCertificate'))), concat('https://', if(greater(length(parameters('cname')), 0), reference('domainTemplate').outputs.alias.value, reference('jiraTemplate').outputs.jiraAppEndpoint.value)), concat('http://', if(greater(length(parameters('cname')), 0), reference('domainTemplate').outputs.alias.value, reference('jiraTemplate').outputs.jiraAppEndpoint.value)))]"
+        },
+        "bastionUrl": {
+            "type": "string",
+            "value": "[reference('vpcTemplate').outputs.jumpboxPublicEndpoint.value]"
         },
         "sshUrl": {
             "type": "string",

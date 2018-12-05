@@ -4,11 +4,21 @@
     "parameters": {
         "location": {
             "type": "string",
-            "defaultValue": "northeurope"
+            "defaultValue": "westeurope",
+            "allowedValues": [
+                "eastus",
+                "westeurope",
+                "southeastasia",
+                "centralindia",
+                "canadacentral"
+            ],
+            "metadata": {
+                "description": "Azure region to deploy to. NB allowable regions are those that currently support preview functionality used within this Jira template"
+            }
         },
         "baseUrl": {
             "type": "string",
-            "defaultValue": "https://jiradcresources.blob.core.windows.net/master/",
+            "defaultValue": "https://smontgomerysa.blob.core.windows.net/jiradeploy/",
             "metadata": {
                 "description": "Base URL for Marketplace",
                 "artifactsBaseUrl": ""
@@ -16,7 +26,7 @@
         },
         "provisioningStorageToken": {
             "type": "string",
-            "defaultValue": "?sv=2017-04-17&si=public-access&sr=c&sig=P15kxinQOKEJruc4gxMmmKL3EpPZMg137i96w%2BKGB8E%3D",
+            "defaultValue": "?sv=2017-11-09&ss=bfqt&srt=sco&sp=rwdlacup&se=2028-10-24T23:00:00Z&st=2018-10-24T23:00:00Z&spr=https,http&sig=vGvcjMRxHZFlD69KxUytEkuWwG8ojUehkgdRupyLVME%3D",
             "metadata": {
                 "description": "Scripts storage access token"
             }
@@ -46,8 +56,9 @@
             "type": "string",
             "defaultValue": "",
             "metadata": {
-                "description": "The public key for the jumpbox SSH user"
-            }
+                "description": "The public key for the jumpbox SSH user. Usually the pasted contents of your machines public key ie ~/.ssh/id_rsa.pub"
+            },
+            "minLength": 300
         },
         "nodeSshUser": {
             "type": "string",
@@ -61,6 +72,57 @@
             "defaultValue": "JIRA@dmin",
             "metadata": {
                 "description": "The password used to SSH into each JIRA node from the jumpbox."
+            }
+        },
+        "dbCreateNew": {
+            "type": "string",
+            "allowedValues": [
+                "Yes (Azure SQL DB Only)",
+                "No"
+            ],
+            "defaultValue": "Yes (Azure SQL DB Only)",
+            "metadata": {
+                "description": "Creates new database or attempts to use existing specified database"
+            }
+        },
+        "dbType": {
+            "type": "string",
+            "allowedValues": [
+                "PostgresSQL",
+                "MySQL",
+                "MS SQL Server"
+            ],
+            "defaultValue": "MS SQL Server",
+            "metadata": {
+                "description": "Database type"
+            }
+        },
+        "dbHost": {
+            "type": "string",
+            "defaultValue": "[if(equals(parameters('dbCreateNew'), 'Yes (Azure SQL DB Only)'), concat('jirasqlserver', uniqueString(resourceGroup().id)), '')]",
+            "metadata": {
+                "description": "Host name of DB server"
+            }
+        },
+        "dbPort": {
+            "type": "string",
+            "defaultValue": "[if(equals(parameters('dbType'), 'MS SQL Server'), '1033', if(equals(parameters('dbType'), 'PostgresSQL'), '5432', '3306'))]",
+            "metadata": {
+                "description": "Database port to use"
+            }
+        },
+        "dbDatabase": {
+            "type": "string",
+            "defaultValue": "[if(equals(parameters('dbCreateNew'), 'Yes (Azure SQL DB Only)'), concat('jirasqldatabase', uniqueString(resourceGroup().id)), '')]",
+            "metadata": {
+                "description": "Database name"
+            }
+        },
+        "dbSchema": {
+            "type": "string",
+            "defaultValue": "public",
+            "metadata": {
+                "description": "Database schema to use"
             }
         },
         "dbUsername": {
@@ -77,6 +139,17 @@
                 "description": "Database password"
             }
         },
+        "dbTier": {
+            "type": "string",
+            "allowedValues": [
+                "Standard",
+                "Premium"
+            ],
+            "defaultValue": "Premium",
+            "metadata": {
+                "description": "The database service tier"
+            }
+        },
         "userName": {
             "type": "string",
             "defaultValue": "admin",
@@ -86,13 +159,16 @@
             "type": "securestring",
             "defaultValue": "admin"
         },
-        "userFullname": {
+        "supportUserFullname": {
             "type": "string",
-            "defaultValue": "Admin Admin"
+            "defaultValue": ""
         },
-        "userEmail": {
+        "supportUserEmail": {
             "type": "string",
-            "defaultValue": "admin@example.com"
+            "defaultValue": "",
+            "metadata": {
+                "description": "If you specify a support email address we'll create/send Azure monitoring alerts"
+            }
         },
         "applicationTitle": {
             "type": "string",
@@ -118,7 +194,7 @@
             "defaultValue": ""
         },
         "sslPfxCertificatePassword": {
-            "type": "string",
+            "type": "securestring",
             "defaultValue": ""
         }
     },
@@ -131,9 +207,29 @@
         },
         "domainTemplate": {
             "templateUrl": "[concat(parameters('baseUrl'),'azuredeploy-domain.json')]"
-        }
+        },
+        "alertsTemplate": {
+            "templateUrl": "[concat(parameters('baseUrl'), 'azuredeploy-alerts.json')]"
+        },
+        "namespace": "jira",
+        "dbServerName": "[concat(variables('namespace'), 'sqlserver', uniqueString(resourceGroup().id))]",
+        "dbDatabaseName": "[concat(variables('namespace'), 'sqldatabase', uniqueString(resourceGroup().id))]"
     },
     "resources": [
+        {
+            "comments": "Azure tracking GUID for Jira - ensure right one being used for the delivery channel ie via Azure Marketplace, BitBucket Quickstart etc",
+            "type": "Microsoft.Resources/deployments",
+            "apiVersion": "2015-01-01",
+            "name": "pid-a717b299-5535-534f-aecb-a702a63c94bd",
+            "properties": {
+                "mode": "Incremental",
+                "template": {
+                    "$schema": "https://schema.management.azure.com/schemas/2015-01-01/deploymentTemplate.json#",
+                    "contentVersion": "1.0.0.0",
+                    "resources": []
+                }
+            }
+        },
         {
             "type": "Microsoft.Resources/deployments",
             "apiVersion": "2015-01-01",
@@ -186,11 +282,32 @@
                     "jiraVmSize": {
                         "value": "[parameters('jiraVmSize')]"
                     },
+                    "dbCreateNew": {
+                        "value": "[if(equals(parameters('dbCreateNew'), 'Yes (Azure SQL DB Only)'), 'true', 'false')]"
+                    },
+                    "dbHost": {
+                        "value": "[parameters('dbHost')]"
+                    },
+                    "dbType": {
+                        "value": "[parameters('dbType')]"
+                    },
+                    "dbPort": {
+                        "value": "[parameters('dbPort')]"
+                    },
+                    "dbDatabase": {
+                        "value": "[parameters('dbDatabase')]"
+                    },
+                    "dbSchema": {
+                        "value": "[parameters('dbSchema')]"
+                    },
                     "dbUsername": {
                         "value": "[parameters('dbUsername')]"
                     },
                     "dbPassword": {
                         "value": "[parameters('dbPassword')]"
+                    },
+                    "dbTier": {
+                        "value": "[parameters('dbTier')]"
                     },
                     "applicationTitle": {
                         "value": "[parameters('applicationTitle')]"
@@ -210,11 +327,11 @@
                     "userCredential": {
                         "value": "[parameters('userCredential')]"
                     },
-                    "userEmail": {
-                        "value": "[parameters('userEmail')]"
+                    "supportUserEmail": {
+                        "value": "[parameters('supportUserEmail')]"
                     },
-                    "userFullname": {
-                        "value": "[parameters('userFullname')]"
+                    "supportUserFullname": {
+                        "value": "[parameters('supportUserFullname')]"
                     },
                     "vnetName": {
                         "value": "[reference('vpcTemplate').outputs.vnetName.value]"
@@ -263,6 +380,51 @@
                     },
                     "prefix": {
                         "value": "jira"
+                    }
+                }
+            }
+        },
+        {
+            "apiVersion": "2015-01-01",
+            "name": "alertsTemplate",
+            "type": "Microsoft.Resources/deployments",
+            "condition": "[not(empty(parameters('supportUserEmail')))]",
+            "dependsOn": [
+                "jiraTemplate"
+            ],
+            "properties": {
+                "mode": "Incremental",
+                "templateLink": {
+                    "uri": "[concat(variables('alertsTemplate').templateUrl, parameters('provisioningStorageToken'))]",
+                    "contentVersion": "1.0.0.0"
+                },
+                "parameters": {
+                    "location": {
+                        "value": "[parameters('location')]"
+                    },
+                    "supportUserEmail": {
+                        "value": "[parameters('supportUserEmail')]"
+                    },
+                    "gtwyName" : {
+                        "value": "[reference('jiraTemplate').outputs.gtwyName.value]"
+                    },
+                    "storageAccountName": {
+                        "value": "[reference('jiraTemplate').outputs.storageAccountName.value]"
+                    },
+                    "clusterName": {
+                        "value": "[reference('jiraTemplate').outputs.clusterName.value]"
+                    },
+                    "appInsightsName": {
+                        "value": "[reference('jiraTemplate').outputs.appInsightsName.value]"
+                    },
+                    "statusCheckUrl": {
+                        "value": "[concat(if(not(empty(parameters('sslBase64EncodedPfxCertificate'))), concat('https://', if(greater(length(parameters('cname')), 0), reference('domainTemplate').outputs.alias.value, reference('jiraTemplate').outputs.jiraAppEndpoint.value)), concat('http://', if(greater(length(parameters('cname')), 0), reference('domainTemplate').outputs.alias.value, reference('jiraTemplate').outputs.jiraAppEndpoint.value))), '/status')]"
+                    },
+                    "dbDatabaseServerName": {
+                        "value": "[reference('jiraTemplate').outputs.dbDatabaseServerName.value]"
+                    },
+                    "dbDatabaseName": {
+                        "value": "[reference('jiraTemplate').outputs.dbDatabaseName.value]"
                     }
                 }
             }
